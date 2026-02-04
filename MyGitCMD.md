@@ -1,3 +1,9 @@
-git add .
-git commit -m "Create changes log file" -m "Move the changes log from readme and put it in a separate file"
-git push
+# My Git Commands
+
+## ⭐ Quick summary for every update
+```git add .```  
+```git commit -m "your message"```  
+```git push```  
+
+***
+
