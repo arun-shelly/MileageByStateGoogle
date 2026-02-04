@@ -482,15 +482,15 @@ $RECYCLE.BIN/
 *.swp
 
 # Custom ignores for this project
-./Data/Output/*.*
-./Logs/*.*
+Data/Output/*.*
+Logs/*.*
 
-./Policy.md
-./Sample1.md
-./Sample2.md
-./GoogleApiCost.md
+Policy.md
+Sample1.md
+Sample2.md
+GoogleApiCost.md
 
-./Data - Copy
-./Data - copy 2
-./Data copy
+Data - Copy
+Data - copy 2
+Data copy
 
