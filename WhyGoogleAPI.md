@@ -76,14 +76,17 @@ Perform Haversine distance for each adjacent polyline point pair.
 **Step 6 — Aggregate by State**  
 Add all polyline‑segment miles per state.
 
-**Step 7 — Apply Deduction**  
-Deduct one-time mileage:
+**Step 7 — Apply Deduction**
 
-1.  High‑pay states first (CA, IL, MA)
-2.  Then standard states
-3.  Never exceeding total miles
+**Deduct miles in the order they were actually traveled**, beginning with the **state where the route starts**, then continuing through each subsequent state in the sequence returned by Google’s route data.
+
+1.  **Start with the state of the first coordinate (starting state)**
+2.  Apply remaining deduction to **each next state in travel order**
+3.  Stop when deduction reaches zero
+4.  Deduction never exceeds the total state mileage
 
 ***
+
 
 ## 3. Comparison of Algorithms
 

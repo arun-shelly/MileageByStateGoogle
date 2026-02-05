@@ -5,8 +5,6 @@ using System.Diagnostics;
 
 namespace MileageByStateGoogle.Services;
 
-
-
 public class MileageEngine
 {
     private readonly GoogleApiService _google;
@@ -63,7 +61,8 @@ public class MileageEngine
                     }
                 }
 
-                ApplyDeductionWithLogging(travelItem.deduct_miles, allSegments, travelId);
+                // APPLY NEW DEDUCTION LOGIC (START-STATE-FIRST)
+                ApplyDeductionStartStateFirst(travelItem.deduct_miles, allSegments, travelId);
 
                 // Aggregate by state
                 var stateAggregates = allSegments
@@ -76,7 +75,7 @@ public class MileageEngine
                     })
                     .ToList();
 
-                // Build state output rows
+                // Build output rows
                 foreach (var st in stateAggregates)
                 {
                     double rate = _stateRates.ContainsKey(st.State) ? 0.70 : 0.30;
@@ -132,7 +131,7 @@ public class MileageEngine
     }
 
     // ==========================================================
-    // PROCESS ONE LEG — RETURNS API CALL COUNTS
+    // PROCESS ONE LEG — (UNCHANGED)
     // ==========================================================
     private async Task<(int Directions, int Geocodes)> ProcessLeg(
         List<StateMileage> result,
@@ -167,7 +166,6 @@ public class MileageEngine
             return (directionsCalls, geocodeCalls);
         }
 
-        // ------- HIGH RESOLUTION SAMPLING -------
         int sampleCount = Math.Max(10, points.Count / 3);
         int interval = Math.Max(1, points.Count / sampleCount);
 
@@ -185,7 +183,7 @@ public class MileageEngine
         Log.Information("Detected route states for travel_id {TravelId}: {States}",
             leg.travel_id, string.Join(" → ", sampledStates.Distinct()));
 
-        // ------- Assign segments to states -------
+        // Assign segments to states
         for (int i = 0; i < points.Count - 1; i++)
         {
             double miles = Haversine.Calculate(
@@ -206,24 +204,44 @@ public class MileageEngine
     }
 
     // ==========================================================
-    // DEDUCTION — WITH STEP LOGGING
+    // NEW DEDUCTION LOGIC — START STATE FIRST
     // ==========================================================
-    private void ApplyDeductionWithLogging(double deduct, List<StateMileage> segments, string travelId)
+    private void ApplyDeductionStartStateFirst(double deduct, List<StateMileage> segments, string travelId)
     {
         Log.Information(
-            "Applying {Deduct:F2} miles deduction for travel_id {TravelId}",
+            "Applying {Deduct:F2} miles deduction for travel_id {TravelId} using start-state-first rule",
             deduct, travelId
         );
 
-        var ordered = segments
-            .OrderByDescending(s => _stateRates.ContainsKey(s.State))
+        if (segments.Count == 0)
+            return;
+
+        // Determine state travel order based on when states FIRST appear
+        var orderedStateSequence = segments
+            .GroupBy(s => s.State)
+            .Select(g => new
+            {
+                State = g.Key,
+                FirstIndex = segments.FindIndex(x => x.State == g.Key)
+            })
+            .OrderBy(g => g.FirstIndex)
+            .Select(g => g.State)
             .ToList();
 
-        foreach (var sm in ordered)
+        Log.Information("Deduction travel order for travel_id {TravelId}: {States}",
+            travelId, string.Join(" → ", orderedStateSequence));
+
+        // Flatten segments based on actual travel sequence
+        var travelOrderedSegments = orderedStateSequence
+            .SelectMany(st => segments.Where(s => s.State == st))
+            .ToList();
+
+        // Deduct in travel order
+        foreach (var sm in travelOrderedSegments)
         {
             if (deduct <= 0)
             {
-                Log.Information("Deduction done for travel_id {TravelId}", travelId);
+                Log.Information("Deduction complete for travel_id {TravelId}", travelId);
                 break;
             }
 
